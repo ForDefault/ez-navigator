@@ -5,9 +5,9 @@
   - Clipboard Menu
   - Make search an indirect menu
   - CreateOptions
-      -Options Menu
-        - for Exit (laucnhed pwd or current)
-        - 
+    -Options Menu
+      - for Exit (laucnhed pwd or current)
+      - If/want .py and .sh to run when "selected" and/or in TerminalMode    
 -**Remove**:
 
 **`Menus                               (Additions or Removals)`**
