@@ -19,7 +19,7 @@ ForAllMenus
   1. Custom Action Menu
         - Delete Directory (number_menu_selection)
   2. File Action Menu
-        - replace content of file with clipboard option
+        - replace delected file contents with clipboard
 
 # Remove From:
 1.
