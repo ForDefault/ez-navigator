@@ -8,6 +8,7 @@
     - Selection for Options Menu
       - for Exit (laucnhed pwd or current)
       - Run .py and .sh to run when "selected" and/or in TerminalMode    
+
 -**Remove**:
 
 **`Menus                               (Additions or Removals)`**
