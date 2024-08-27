@@ -4,6 +4,10 @@
 -**Add**:
   - Clipboard Menu
   - Make search an indirect menu
+  - CreateOptions
+      -Options Menu
+        - for Exit (laucnhed pwd or current)
+        - 
 -**Remove**:
 
 **`Menus                               (Additions or Removals)`**
