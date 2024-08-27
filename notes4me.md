@@ -4,8 +4,8 @@
 -**Add**:
   - Clipboard Menu
   - Make search an indirect menu
-  - CreateOptions
-    -Options Menu
+  - Create Options Menu (custom additions and toggle selections)
+    - Selection for Options Menu
       - for Exit (laucnhed pwd or current)
       - Run .py and .sh to run when "selected" and/or in TerminalMode    
 -**Remove**:
