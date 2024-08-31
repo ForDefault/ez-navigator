@@ -10,7 +10,9 @@
       - Run .py and .sh to run when "selected" and/or in TerminalMode    
   - Shift adapatation - allows suboptions- Example:
     - 3) "edit with nano" would be a subMenu if shift + 3 pressed. Allowing new number selection with more options.
-      - Mark at the end of any Menu some sign/text of submenu available. could even list them out as part of )optionA( to see all menu actions in a tree style.  
+      - Mark at the end of any Menu some sign/text of submenu available. could even list them out as part of )optionA( to see all menu actions in a tree style.
+> Make it so, cat command has options like copy to clipboard or return or (maybe one day) copy regex pattterns so the whole file is regexed or sed compliant. 
+      - 
 -**Remove**:
 
 **`Menus                               (Additions or Removals)`**  
