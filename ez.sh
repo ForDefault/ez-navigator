@@ -303,33 +303,14 @@ output_search_results() {
     echo "Searched filenames saved to search_results.txt."
     read -n 1 -s -r -p "Press any key to continue..."
 }
-
-
 display_items_fileNav() {
     NC=$'\e[m'; RED=$'\e[91m'; GREEN=$'\e[92m'
-    dirs=($(ls -d */ 2>/dev/null))
-    files=($(ls -p | grep -v /))
-    dir_count=${#dirs[@]}
-    file_count=${#files[@]}
-    max_items=$(( dir_count > file_count ? dir_count : file_count ))
-    # Dynamically get terminal size
+    dir_count=0
+    file_count=0
+    max_items=0
     term_width=$(tput cols)
-    col_width=$(( (TERM_WIDTH / 2) - TERM_PAD ))
-    max_display_length=$(( col_width - COL_PAD ))
-
-    # BOOKMARK add option for hidden folders etc. 
-        # Collect directories and files (starting from index 1 for ordering)
-    # List directories including hidden ones (but not `.` and `..`)
-    mapfile -t dirs < <(ls -ld -- */ 2>/dev/null | awk '{print $NF}' | sed 's:/$::' | sort)
-
-    # List files including hidden ones
-    mapfile -t files < <(ls -lA -- | grep '^-' | awk '{print $NF}' | sort)
-
-
-
-    dir_count=${#dirs[@]}
-    file_count=${#files[@]}
-    max_lines=$(( file_count > dir_count ? file_count : dir_count ))
+    col_width=$(( (term_width / 2) - 5 )) # Adjust column width
+    max_display_length=$(( col_width - 6 ))
 
     # Function to trim strings to fit the display
     trim_string() {
@@ -347,12 +328,54 @@ display_items_fileNav() {
         printf '%*s\n' "$term_width" '' | tr ' ' '-'
     }
 
+    # Function to identify and format symlinks
+    for_mapfiles() {
+        format_symlink() {
+            local filepath="$1"
+            if [[ -L "$filepath" ]]; then
+                echo "(SYSLINK) ${filepath##*/}"  # Display only the symlink name
+            else
+                echo "${filepath##*/}"
+            fi
+        }
+
+        # List directories (including hidden ones) and sort
+        mapfile -t dirs < <(
+            find . -maxdepth 1 -mindepth 1 -type d ! -name '.' ! -name '..' -printf '%p\n' |
+            sort
+        )
+
+        # List files (including hidden ones and symlinks to files) and sort
+        mapfile -t files < <(
+            find . -maxdepth 1 -mindepth 1 \( -type f -o -type l \) -printf '%p\n' |
+            sort
+        )
+
+        formatted_dirs=()
+        formatted_files=()
+
+        for dir in "${dirs[@]}"; do
+            formatted_dirs+=("$(format_symlink "$dir")")
+        done
+
+        for file in "${files[@]}"; do
+            formatted_files+=("$(format_symlink "$file")")
+        done
+    }
+
+    # Call for_mapfiles to populate directories and files
+    for_mapfiles
+
+    dir_count=${#formatted_dirs[@]}
+    file_count=${#formatted_files[@]}
+    max_items=$(( dir_count > file_count ? dir_count : file_count ))
+
     # Build the output with bottom-up order and dynamic spacing
     output=""
     for (( i = max_items; i >= 1; i-- )); do
         # Left Column: Files (numbering starts after directories)
         if (( i <= file_count )); then
-            trimmed_file=$(trim_string "${files[$((i - 1))]}")  # Correct indexing
+            trimmed_file=$(trim_string "${formatted_files[$((i - 1))]}")
             output+=$(printf "${GREEN}%2d. %-*s${NC}" $((dir_count + i)) "$col_width" "$trimmed_file")
         else
             output+=$(printf "%-*s" "$col_width" "")
@@ -360,22 +383,19 @@ display_items_fileNav() {
 
         # Right Column: Directories (normal numbering)
         if (( i <= dir_count )); then
-            trimmed_dir=$(trim_string "${dirs[$((i - 1))]}")  # Correct indexing
+            trimmed_dir=$(trim_string "${formatted_dirs[$((i - 1))]}")
             output+=$(printf "${RED}%2d. %-*s${NC}" $i "$col_width" "$trimmed_dir")
         fi
 
         output+=$'\n'
     done
 
-
-
     # Print everything with borders and aligned titles
     draw_border
-    echo "$output"  # No tac here, output is already reversed
+    echo "$output"
     printf "${GREEN}%-*s${NC}${RED}%-*s${NC}\n" "$col_width" "Files:" "$col_width" "Directories:"
     draw_border
 }
-
 
 navigation_numbers() {
     local choice="$1"  # Start with the initial number passed from the earlier selection
