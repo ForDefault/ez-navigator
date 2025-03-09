@@ -7,16 +7,20 @@ NEON_RED='\033[1;31m'
 NEON_GREEN='\033[1;32m'
 NEON_BLUE='\033[1;36m'
 NEON_YELLOW='\033[1;33m'
+NEON_RED="\033[1;31m"        # Bright red
+NEON_YELLOW_BG="\033[1;43m" # Bright yellow background
+NEON_BLACK="\033[30m"       # Black text
 NC='\033[0m' # No Color
 COLWIDTH=40
 cd2cd=""
 LAST_PATH_KEY=""
 BOOKMARK_LIST=()  # List to store multiple bookmarks
-current_dir_tracker=$(pwd)  # Track the current directory
+CURRENT_DIR=$(pwd)
 tab=$('\t')  # Proper tab setting
 MODE="navigation"  # Flag to track the current mode
 selected_item=""  # Track the selected file or directory
 current_selection=0  # Track the current selected item in the list
+tab_screen=$'\t'  # Proper tab setting for screen command
 
 ####################
 # Substitute Values
@@ -30,12 +34,30 @@ INDEX_OFFSET=0                 # Offset for numbering starting at 1
 ####################
 B=$"#Bookmark for Option to be added"
 # Print prompt at the top of the display
+activeuser=$(whoami)
+ez_folder="/home/$activeuser/.ez_navigator"
+non_user_screenstxt="$ez_folder/non_user_screenstxt.txt"
+users_screenstxt="$ez_folder/users_screens.txt"
+temp_screen_diff="$ez_folder/temp_screen_diff.txt"
+temp_file="$ez_folder/temp_users_screens.txt"
+mkdir -p $ez_folder
+touch "$non_user_screenstxt" "$users_screenstxt" "$temp_screen_diff" "$temp_file"
+highlight_text() {
+    local text="$1"  # Takes any text input
+    echo -e "\033[1;47m\033[30m${text}${NC}"  # White background with Black text
+}
+highlight_terminated() {
+    local text="$1"  # Takes any text input
+    echo -e "\033[1;41m\033[97m${text}${NC}"  # Rose Red background with Bright White text
+}
+warning_highlight() {
+    local text="$1"  # Takes any text input
+    echo -e "\033[1;43m\033[30m${text}${NC}"  # Bright Yellow background with Black text
+}
+
 print_prompt() {
     echo "Select a number, press = to go to the last directory, Backspace for '..', \\ twice to bookmark, ! for Clipboard Manager, Tab to enter Terminal Mode:"
-    if [[ -n "$cd2cd" ]]; then
-        echo -e "Previous Directory: ${NEON_BLUE}$cd2cd${NC}"
-    fi
-
+#Bookmark list not yet working
     if [[ -n "$LAST_PATH_KEY" ]]; then
         echo -e "Last Directory: ${NEON_BLUE}$LAST_PATH_KEY${NC}"
     fi
@@ -46,6 +68,10 @@ print_prompt() {
             echo -e "${NEON_YELLOW}$bookmark${NC}"
         done
     fi
+}
+track_directory() {
+    LAST_PATH_KEY="$CURRENT_DIR"  # Save current directory to LAST_PATH_KEY
+    CURRENT_DIR=$(pwd)            # Update CURRENT_DIR to the new directory
 }
 
 # Function to handle directory and file navigation choices
@@ -84,9 +110,9 @@ handle_choice() {
         fi
     elif [[ "$main_choice" -gt 0 && "$main_choice" -le $((dir_count + file_count)) ]]; then
         if [[ "$main_choice" -le $dir_count ]]; then
-            LAST_PATH_KEY=$(pwd)  # Set LAST_PATH_KEY before moving to new directory
             selected_item="${dirs[$main_choice]}"  # Use correct indexing (starts at 1)
             cd "$selected_item"
+            refresh_to_pseudo
             echo "Moved to $selected_item"
         else
             file_index=$((main_choice - dir_count))  # Adjust file index correctly
@@ -270,7 +296,7 @@ search_options_menu() {
     done
 }
 
-# Function to narrow the search within the results (option 1)
+#Function to narrow the search within the results (option 1)
 search_within_results() {
     narrowed_results=()
     read -p "Enter additional search query: " additional_query
@@ -303,6 +329,7 @@ output_search_results() {
     echo "Searched filenames saved to search_results.txt."
     read -n 1 -s -r -p "Press any key to continue..."
 }
+
 display_items_fileNav() {
     NC=$'\e[m'; RED=$'\e[91m'; GREEN=$'\e[92m'
     dir_count=0
@@ -432,8 +459,427 @@ navigation_numbers() {
     # Call the file navigation function with the collected number
     collect_items_fileNav "$choice"
 }
+####################
+# Screen Commands
+####################
 
+check_users_screens() {
+    generate_users_screens
+    # Ensure users_screens.txt exists or create it
+    if [ ! -f "$users_screenstxt" ]; then
+        echo "Creating $users_screenstxt..."
+        > "$users_screenstxt"  # Initialize an empty file
+    fi
+
+    echo "Checking and updating $users_screenstxt with active screens..."
+
+    # Get all active screens from screen -ls
+    screen -ls | grep -oP '^\s*[0-9]+\.\S+' > "$temp_file"
+
+    # Filter users_screens.txt to keep only active screens
+    if [ -s "$temp_file" ]; then
+        grep -vFf "$users_screenstxt" "$non_user_screenstxt" | sed '/^$/d' > "$temp_file"
+        grep -vFf "$temp_file" "$non_user_screenstxt" | sed '/^$/d' > "$users_screenstxt"
+
+        mv "$non_user_screenstxt" "$users_screenstxt"
+
+        echo "Updated $users_screenstxt with only active screens."
+    else
+        echo "No active screens found. $users_screenstxt not updated."
+    fi
+
+    # Cleanup temporary file
+    rm -f "$temp_file"
+}
+
+
+
+generate_users_screens() {
+    rm $non_user_screenstxt
+    # Ensure users_screens.txt exists
+    if [ ! -f "$users_screenstxt" ]; then
+        echo "Creating $users_screenstxt..."
+        > "$users_screenstxt"  # Initialize an empty file
+    fi
+
+    echo "Processing and updating users_screens.txt..."
+
+    # Get all active screens from screen -ls
+    screen -ls | grep -oP '^\s*[0-9]+\.\S+' > "$temp_file"
+
+    # Filter out user screens from the active screens
+    if [ -s "$temp_file" ]; then
+        grep -vFf "$users_screenstxt" "$temp_file" | sed '/^$/d' > "$non_user_screenstxt"
+        echo "Non-user screens saved to $non_user_screenstxt."
+    else
+        echo "No active screens found. Non-user screen list not updated."
+    fi
+
+    # Cleanup temporary file
+    rm -f "$temp_file"
+}
+remove_screen_user() {
+    local screen_name="$1"
+
+    if [[ -n "$screen_name" ]]; then
+        # Highlight the screen name
+        local highlighted_name
+        highlighted_name=$(highlight_text "$screen_name")
+
+        echo "Attempting to remove screen: $highlighted_name"
+        full_session_name=$(screen -ls | grep -o "[0-9]*\.${screen_name}" | xargs)
+
+        if [[ -z "$full_session_name" ]]; then
+            local highlighted_full_session
+            highlighted_full_session=$(highlight_text "$screen_name")
+            echo "$(warning_highlight "Screen session matching '$highlighted_full_session' not found.")"
+            generate_users_screens  # Regenerate lists in case of mismatch
+            return
+        fi
+
+        # Highlight full session name
+        local highlighted_full_session
+        highlighted_full_session=$(highlight_text "$full_session_name")
+
+        # Attempt to terminate the screen session
+        screen -S "$full_session_name" -X quit
+        if [ $? -eq 0 ]; then
+            echo "Screen session '$highlighted_full_session' $(highlight_terminated "terminated")."
+            sed -i "/^${screen_name}$/d" "$users_screenstxt"  # Remove from users_screens.txt
+        else
+            echo "$(warning_highlight "Failed to terminate screen session '$highlighted_full_session'.")"
+        fi
+    else
+        echo "$(warning_highlight "No screen_name provided. Updating lists instead.")"
+    fi
+    generate_users_screens
+}
+
+remove_screen_non_user() {
+    local screen_name="$1"
+
+    if [[ -n "$screen_name" ]]; then
+        # Highlight the screen name
+        local highlighted_name
+        highlighted_name=$(highlight_text "$screen_name")
+
+        echo "Attempting to remove non-user screen: $highlighted_name"
+
+        # Verify the screen exists in the non_user_screenstxt file
+        if ! grep -q "^${screen_name}$" "$non_user_screenstxt"; then
+            echo "$(warning_highlight "Screen session '$highlighted_name' not found in the list.")"
+            return
+        fi
+
+        # Extract the full session name from screen -ls using the file entry
+        full_session_name=$(screen -ls | awk -v name="$screen_name" '$0 ~ name {print $1}' | xargs)
+
+        if [[ -z "$full_session_name" ]]; then
+            echo "$(warning_highlight "Screen session matching '$highlighted_name' not found in active sessions.")"
+            return
+        fi
+
+        # Highlight the full session name
+        local highlighted_full_session
+        highlighted_full_session=$(highlight_text "$full_session_name")
+
+        # Attempt to terminate the screen session
+        screen -S "$full_session_name" -X quit
+        if [ $? -eq 0 ]; then
+            echo "Screen session '$highlighted_full_session' $(highlight_terminated "terminated")."
+            # Safely remove the entry from non_user_screenstxt
+            grep -v "^${screen_name}$" "$non_user_screenstxt" > "${non_user_screenstxt}.tmp"
+            mv "${non_user_screenstxt}.tmp" "$non_user_screenstxt"
+        else
+            echo "$(warning_highlight "Failed to terminate screen session '$highlighted_full_session'.")"
+        fi
+    else
+        echo "$(warning_highlight "No screen_name provided.")"
+    fi
+}
+
+
+add_screen() {
+    # Prompt the user for a name or use a default
+    read -p "Enter a name for the screen session (or press Enter for default): " userdefined
+    default_name="my_predefined_screen"
+
+    # Use the user-provided name or fall back to the default
+    base_name="${userdefined:-$default_name}"
+    counter=0
+    unique_name="${base_name}"
+
+    # Check for existing screen sessions and increment the name if needed
+    while screen -ls | grep -q "${unique_name}"; do
+        counter=$((counter + 1))
+        unique_name="${base_name}_${counter}"
+    done
+
+    # Append the unique name to the file
+    echo "${unique_name}" >> "$users_screenstxt"
+
+    # Create a detached screen session with the unique name
+    screen -dmS "$unique_name"
+    echo "Screen session $(highlight_text "$unique_name") created and appended to users_screens.txt."
+    generate_users_screens
+}
+
+submenu_for_user_screen() {
+    local selected_screen="$1"
+    # Highlight the selected screen
+    local highlighted_screen
+    highlighted_screen=$(highlight_text "$selected_screen")
+
+    echo -e "\n${NEON_GREEN}Options for User Screen: ${NC}${highlighted_screen}"
+    echo "1) Reattach to screen"
+    echo "2) Delete screen"
+    echo "q) Go back to screen manager"
+    echo ""
+
+    while true; do
+        read -p "Choose an action: " submenu_choice
+
+        case "$submenu_choice" in
+            1)
+                echo "Reattaching to screen: $highlighted_screen"
+                if screen -r "$selected_screen"; then
+                    echo "Successfully reattached to $highlighted_screen."
+                else
+                    echo "$(warning_highlight "Failed to reattach. Screen might not exist.")"
+                fi
+                break
+                ;;
+            2)
+                # Use remove_screen_user to handle deletion
+                remove_screen_user "$selected_screen"
+                break
+                ;;
+            q)
+                echo "Returning to screen manager menu."
+                break
+                ;;
+            *)
+                echo "$(warning_highlight "Invalid choice. Please try again.")"
+                ;;
+        esac
+    done
+}
+
+submenu_for_non_user_screen() {
+    local selected_screen="$1"
+    # Highlight the selected screen
+    local highlighted_screen
+    highlighted_screen=$(highlight_text "$selected_screen")
+
+    echo -e "\n${NEON_RED}Options for Non-User Screen: ${NC}${highlighted_screen}"
+    echo "1) Reattach to screen"
+    echo "2) Delete screen"
+    echo "q) Go back to screen manager"
+    echo ""
+
+    while true; do
+        read -p "Choose an action: " submenu_choice
+
+        case "$submenu_choice" in
+            1)
+                echo "Reattaching to screen: $highlighted_screen"
+                if screen -r "$selected_screen"; then
+                    echo "Successfully reattached to $highlighted_screen."
+                else
+                    echo "$(warning_highlight "Failed to reattach. Screen might not exist.")"
+                fi
+                break
+                ;;
+            2)
+                # Use remove_screen_non_user to handle deletion
+                remove_screen_non_user "$selected_screen"
+                break
+                ;;
+            q)
+                screen_manager_menu
+                break
+                ;;
+            *)
+                echo "$(warning_highlight "Invalid choice. Please try again.")"
+                ;;
+        esac
+    done
+}
+
+
+screen_manager_menu() {
+    check_users_screens
+    # Refresh lists before display
+    generate_users_screens
+
+    while true; do
+        clear
+        echo ""
+        echo "1) Create a new screen"
+        echo "q) Quit"
+        echo ""
+        echo -e "${NEON_GREEN} ============================================================${NC}"
+        echo ""  # Add a newline for better formatting
+
+        local counter=1
+        local user_screen_count=0
+
+        # Display user screens
+        if [ -s "$users_screenstxt" ]; then
+            while IFS= read -r line; do
+                printf "   %d) %s\n" "$counter" "$line"
+                counter=$((counter + 1))
+                user_screen_count=$((user_screen_count + 1))
+            done < "$users_screenstxt"
+        else
+            echo "                     No other screens found."
+        fi
+        echo ""  # Add a newline for better formatting
+
+        echo -e "${NEON_GREEN} ================↑↑↑ USER SCREEN SESSIONS ↑↑↑================${NC}"
+        echo -e "${NEON_RED} ================↓↓↓ ALL  OTHER  SCREENS  ↓↓↓================${NC}"
+        echo ""  # Add a newline for better formatting
+
+        # Capture the starting counter for non-user screens
+        local non_user_start=$counter
+
+        # Display non-user screens
+        if [ -s "$non_user_screenstxt" ]; then
+            while IFS= read -r line; do
+                printf "   %d) %s\n" "$counter" "$line"
+                counter=$((counter + 1))
+            done < "$non_user_screenstxt"
+        else
+            echo "                     No other screens found."
+        fi
+        echo ""  # Add a newline for better formatting
+        echo -e "${NEON_RED} ============================================================${NC}"
+        echo ""  # Add a newline for better formatting
+
+        # Prompt for input
+        read -p "Enter screen number, Backspace to go back, or 'q' to quit: " choice
+        echo ""  # Add a newline for better formatting
+
+        # Process input
+        case "$choice" in
+            0)
+                add_screen
+                ;;
+            $| $'\x7f' | '=' | 0)  # Backspace, =, and 0 to exit to pseudo display
+                MODE="navigation"  # Return to Navigation Mode
+                refresh_to_pseudo
+                break
+                ;;
+            q)
+                MODE="navigation"
+                refresh_to_pseudo
+                break
+                ;;
+            *)
+                if [[ "$choice" =~ ^[1-9][0-9]*$ ]]; then
+                    local main_choice="$choice"
+                    local selected_screen=""
+
+                    if (( main_choice < non_user_start )); then
+                        # User screen range
+                        selected_screen=$(sed -n "${main_choice}p" "$users_screenstxt")
+                        if [[ -n "$selected_screen" ]]; then
+                            submenu_for_user_screen "$selected_screen"
+                        else
+                            echo "Invalid selection. Please try again."
+                        fi
+                    else
+                        # Non-user screen range
+                        local offset=$((main_choice - non_user_start + 1))
+                        selected_screen=$(sed -n "${offset}p" "$non_user_screenstxt")
+                        if [[ -n "$selected_screen" ]]; then
+                            submenu_for_non_user_screen "$selected_screen"
+                        else
+                            echo "Invalid selection. Please try again."
+                        fi
+                    fi
+                else
+                    echo "Invalid input. Please try again."
+                fi
+                ;;
+        esac
+        read -n 1 -s -p "Press any key to continue..."
+    done
+}
+
+
+
+reattach_screen() {
+    local screen_name="$1"
+    echo "Reattaching to screen: $screen_name"
+    screen -r "$screen_name"
+}
+####################
+#Terminal Mode
+####################
+
+
+TERMINAL_SCREEN_SESSION="terminal_mode"
+
+toggle_terminal_mode() {
+    # Check if the session exists
+    if screen -ls | grep -q "$TERMINAL_SCREEN_SESSION"; then
+        # Check if we are inside the session
+        if [[ "$STY" == "$TERMINAL_SCREEN_SESSION" ]]; then
+            # Suppress detach message
+            stty -echo                       # Disable terminal output
+            screen -X detach > /dev/null 2>&1
+            stty echo                        # Re-enable terminal output
+        else
+            # Suppress reattach message
+            stty -echo                       # Disable terminal output
+            screen -r "$TERMINAL_SCREEN_SESSION" > /dev/null 2>&1
+            stty echo                        # Re-enable terminal output
+        fi
+    else
+        # Create a new session quietly
+        local temp_config
+        temp_config=$(mktemp)
+        echo 'bindkey ^I detach' > "$temp_config"
+        stty -echo                           # Disable terminal output
+        screen -dmS "$TERMINAL_SCREEN_SESSION" -c "$temp_config" > /dev/null 2>&1
+        stty echo                            # Re-enable terminal output
+        rm -f "$temp_config"
+
+        # Reattach to the session silently
+        stty -echo                           # Disable terminal output
+        screen -r "$TERMINAL_SCREEN_SESSION" > /dev/null 2>&1
+        stty echo                            # Re-enable terminal output
+    fi
+
+    # Refresh the pseudo display
+    refresh_to_pseudo
+}
+
+create_and_run_screen() {
+    # Launch a new terminal and start the screen session with Tab binding
+    gnome-terminal -- bash -c "
+        # Create a temporary screen configuration with Tab-to-detach
+        temp_config=\$(mktemp)
+        echo 'bindkey ^I detach' > \"\$temp_config\"
+
+        # Start the screen session using the temporary configuration
+        stty -echo                           # Disable terminal output
+        screen -S \"$TERMINAL_SCREEN_SESSION\" -c \"\$temp_config\"
+        stty echo                            # Re-enable terminal output
+
+        # Clean up the temporary configuration file
+        rm -f \"\$temp_config\"
+    "
+}
+
+
+
+
+####################
 # Active Reader for navigation input
+####################
+
 active_reader() {
     while true; do
         # Default text color
@@ -444,12 +890,12 @@ active_reader() {
         case "$choice" in
             0)
                 clear
-                MODE="menu"  # Switch to Menu Mode
-                custom_action_menu  # Call the custom action menu
+                MODE="menu"
+                screen_manager_menu
                 ;;
             $'\x7f')  # Handle Backspace
                 echo -ne "\033[1A\033[K"
-                cd2cd=$(pwd)
+                track_directory
                 cd ..
                 refresh_to_pseudo
                 ;;
@@ -463,20 +909,14 @@ active_reader() {
                 ;;
             $tab)  # Handle Tab for Terminal Mode Toggle
                 if [ "$MODE" == "navigation" ]; then
-                    enter_terminal_mode
+                    toggle_terminal_mode
                 else
-                    exit_terminal_mode
+                    toggle_terminal_mode
                 fi
                 ;;
             $'\e[A')  # Up Arrow Key
                 if [ $current_selection -gt 1 ]; then
                     current_selection=$((current_selection - 1))
-                fi
-                refresh_to_pseudo
-                ;;
-            $'\e[B')  # Down Arrow Key
-                if [ $current_selection -lt $((dir_count + file_count)) ]; then
-                    current_selection=$((current_selection + 1))
                 fi
                 refresh_to_pseudo
                 ;;
@@ -587,6 +1027,7 @@ file_action_menu() {
 # Refresh and return to pseudo display
 refresh_to_pseudo() {
     clear
+    track_directory
     print_prompt  # Display the prompt at the top
     display_items_fileNav
     active_reader
@@ -621,34 +1062,34 @@ custom_action_menu() {
     done
 }
 
-# Enter Terminal Mode
-enter_terminal_mode() {
-  green="$(tput setaf 2)"
-  red="$(tput setaf 1)"
-  reset="$(tput sgr0)"
-  MODE="terminal"
-  current_dir_tracker=$(pwd)  # Save the current directory
-  clear
-  previous_dir="$current_dir_tracker"
+# # Enter Terminal Mode
+# enter_terminal_mode() {
+#   green="$(tput setaf 2)"
+#   red="$(tput setaf 1)"
+#   reset="$(tput sgr0)"
+#   MODE="terminal"
+#   current_dir_tracker=$(pwd)  # Save the current directory
+#   clear
+#   previous_dir="$current_dir_tracker"
 
-  while true; do
-    # Display user, hostname, and current directory
-    current_dir=$(pwd)
-    PS1="${green}$(whoami)${reset}@${red}$(pwd)${reset}$ "
-    echo -n "$PS1"
+#   while true; do
+#     # Display user, hostname, and current directory
+#     current_dir=$(pwd)
+#     PS1="${green}$(whoami)${reset}@${red}$(pwd)${reset}$ "
+#     echo -n "$PS1"
 
-    # Read the command input or detect Tab without requiring Enter
-    read -n 1 -s cmd  # Read a single character silently
-    if [ "$cmd" == "$tab" ]; then
-      break  # Exit terminal mode
-    else
-      echo -n "$cmd"  # Display the first character
-      read cmd_rest  # Read the rest of the command
-      eval "$cmd$cmd_rest"  # Execute the command using eval
-    fi
-  done
-  exit_terminal_mode
-}
+#     # Read the command input or detect Tab without requiring Enter
+#     read -n 1 -s cmd  # Read a single character silently
+#     if [ "$cmd" == "$tab" ]; then
+#       break  # Exit terminal mode
+#     else
+#       echo -n "$cmd"  # Display the first character
+#       read cmd_rest  # Read the rest of the command
+#       eval "$cmd$cmd_rest"  # Execute the command using eval
+#     fi
+#   done
+#   exit_terminal_mode
+# }
 
 # Exit Terminal Mode and Return to Navigation
 exit_terminal_mode() {
