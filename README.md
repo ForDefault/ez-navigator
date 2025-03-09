@@ -10,16 +10,16 @@ ez.sh is a highly modular and customizable bash script designed for efficient fi
 
 > Adding use of personal/custom scripts in terminal_mode
 
-
+## How to use:
 ### **Button Definitions and Abilities**
-####### File and Folder **selection** `Requires Pressing Enter`
+###### File and Folder **selection** `Requires Pressing Enter`
 >Input a number for a folder or file; press enter.
 ```
 Enter your choice:XX  
 (press enter after input) 
 ```
 
-####### `Single-Click Buttons:`
+###### `Single-Click Buttons:`
 - **`Backspace:`** Move up one or "back" a directory level.
 - **`0`** Press 0 and go to the **screen manager** 
 - **`tab`** If you press tab you will be able to go into terminal immedietely. **To exit terminal_mode** by pressing **`tab again`**  `Single-Click:`
