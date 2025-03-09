@@ -5,7 +5,9 @@ ez.sh is a highly modular and customizable bash script designed for efficient fi
 
 #UPDATE# March 8 2025
 > next changes will include terminal_mode fix
+
 > Expanding Shift+1 to more diverse tool
+
 > Adding use of personal/custom scripts in terminal_mode
 
 
