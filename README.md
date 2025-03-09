@@ -11,36 +11,29 @@ ez.sh is a highly modular and customizable bash script designed for efficient fi
 > Adding use of personal/custom scripts in terminal_mode
 
 ## How to use:
-### **Button Definitions and Abilities**
-###### File and Folder **selection** `Requires Pressing Enter`
->Input a number for a folder or file; press enter.
-```
-Enter your choice:XX  
-(press enter after input) 
-```
+### **Button Definitions and Abilities**: Some are a "`Single-Click`" and others "`Require Enter`" to perform
 
-###### `Single-Click Buttons:`
+![image](https://github.com/user-attachments/assets/9f80482a-7e5e-4f7f-bdf7-ad0e6b9083b0)
+
+
+#### - `Requires Pressing Enter` - File and Folder **selection**
+>Input a number for a folder or file in "Enter your choice:"; then press enter.
+
+
+#### - `Single-Click Buttons:`
 - **`Backspace:`** Move up one or "back" a directory level.
 - **`0`** Press 0 and go to the **screen manager** 
-- **`tab`** If you press tab you will be able to go into terminal immedietely. **To exit terminal_mode** by pressing **`tab again`**  `Single-Click:`
-- - **`Shift+1:`** Open clipboard menu.
-
-![image](https://github.com/user-attachments/assets/cf31351e-c915-4a58-9084-01e4ee3cda36)
-
-
-
-### Features are constantly being updated ###
-  
-### **Single-Click Menus (Toggle)** 
-*Menus that do not navigate away from your current directory:*
-
--Instant Context Menus: Access powerful file actions instantly. No more typing out long commands—just hit a key and go!
-
-- **`0:`** Access the context menu for additional actions.
-   
-  ![image](https://github.com/user-attachments/assets/4dc59010-760a-481a-925e-7adbdaec5324)
+- **`tab`** If you press tab you will be able to go into terminal immedietely. **To exit terminal_mode** by pressing **`tab again`**  
+- **`=`** Simply takes you to the last Dir entered and path appears in blue at the top
+- **`-`** Bookmarking: Allows storing paths to re-enter later ** 
+- **`Shift+1:`** Open clipboard menu. ** Will be altered to more comprehensive use **
 
 
+
+
+
+
+### Features Explained:
 
 - `Toggle CLI Mode`: Seamlessly switch between the script interface and your standard CLI with one button. (Tab to toggle)
 
