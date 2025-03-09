@@ -10,6 +10,7 @@ ez.sh is a highly modular and customizable bash script designed for efficient fi
 
 > Adding use of personal/custom scripts in terminal_mode
 
+
 ## How to use:
 ### **Button Definitions and Abilities**: Some are a "`Single-Click`" and others "`Require Enter`" to perform
 
